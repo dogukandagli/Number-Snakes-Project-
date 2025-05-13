@@ -16,7 +16,7 @@ public class Game {
 	TextMouseListener tmlis;
 	KeyListener klis;
 
-	private char[][] board = readBoardFromFile("src/yilanliyilanoyunu/maze.txt");
+	private char[][] board = readBoardFromFile("src/maze.txt");
 	private Player player = spawnPlayer();
 	private CRobot cRobot = spawnCRobot();
 	private Snake[] snakes = new Snake[15];
@@ -832,22 +832,7 @@ public class Game {
 	}
 	
 	public void snakeReserving(Snake snake) {
-		/*if (snake.collactibleLinkedList != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-
-			Node dataNode = snake.collactibleLinkedList.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				char snakeData = (char) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			snake.collactibleLinkedList = newList;
-		}*/
+	
 		if (snake.positionLinkedList != null) {
 	        Node current = snake.positionLinkedList.getHead();
 
@@ -865,101 +850,12 @@ public class Game {
 	        snake.setPos(temp);
 	        board[temp.y][temp.x]='S';
 	    }
-		/*
-		if (snake.positionLinkedList != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-			
-			Node dataNode = snake.positionLinkedList.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				Position snakeData = (Position) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			snake.positionLinkedList = newList;
-			
-		}*/
 		
 		showSnakeTail(snake.collactibleLinkedList, snake.positionLinkedList);
 		
-	/*	if (snake.collactibleLinkedList != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-
-			Node dataNode = snake.collactibleLinkedList.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				char snakeData = (char) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			snake.collactibleLinkedList = newList;
-		}
-		if (snake.positionLinkedList != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-			
-			Node dataNode = snake.positionLinkedList.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				Position snakeData = (Position) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			snake.positionLinkedList = newList;
-			
-		}*/
-
-		
 	}
 	
-	public void reverseHelp(SingleLinkedList listcol ,SingleLinkedList listPos) {
-		if (listPos != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-			
-			Node dataNode = listPos.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				Position snakeData = (Position) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			listPos = newList;
-			
-		}
-		
-		if (listcol != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-
-			Node dataNode = listcol.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				char snakeData = (char) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			listcol = newList;
-		}
-		
-	}
+	
 
 	public void printMap() {
 		cn.getTextWindow().setCursorPosition(0, 0);
