@@ -27,12 +27,14 @@ public class Game {
 	private int totalTime = 0;
 	private CircularQueue inputQueue = new CircularQueue(15);
 	private Position[] traps = new Position[100];
-	private int trapsCount = 0;
-	private int count;
+	private int trapsMaxCount = 0;
+	private int[] trapsTimes = new int[100];
+	
+	private int count;//haci neyin count u
 
-	Stack stack;
+	Stack stack;//neyin stack ı
 	Stack stack2;
-	private int lesnekocounte = 0;
+	private int lesnekocounte = 0;//bu ne demek:D
 
 	// ------ Standard variables for mouse and keyboard ------
 	public int mousepr; // mouse pressed?
@@ -106,6 +108,27 @@ public class Game {
 				pathLine();
 
 			if (totalTime % (4 * timeUnit) == 0) {
+				//check snake pos for trap
+				boolean hardBreak = false;
+				for (int i = 0; i < this.trapsMaxCount; i++) {
+					if (this.traps[i] != null) {
+						for (int j = 0; j < this.snakes.length; j++) {
+							if (this.snakes[j] != null) {
+								if (Math.abs(this.traps[i].x - this.snakes[j].getPos().x) <= 1 && Math.abs(this.traps[i].y - this.snakes[j].getPos().y) <= 1) {
+									removeTrap(i);
+									removeSnake(j);
+									this.player.setEnergy(this.player.getEnergy()+500);
+									this.player.setScore(this.player.getScore()+200);
+									hardBreak = true;
+									break;
+								}
+							}
+						}
+						if (hardBreak) {
+							break;
+						}
+					}
+				}
 				updateSposition();
 			}
 			if (mousepr == 1) {
@@ -145,6 +168,17 @@ public class Game {
 				enqueueInput();
 			}
 
+			if(totalTime % (10*timeUnit) == 0) {
+				for(int i = 0; i < this.trapsMaxCount; i++) {
+					if (this.traps[i] != null) {
+						if (this.trapsTimes[i]-- == 0) {
+							this.board[this.traps[i].y][this.traps[i].x] = ' ';
+							this.traps[i] = null;
+						}
+					}
+				}
+			}
+			
 			if (player.getEnergy() > 0) {
 				player.setEnergy(player.getEnergy() - 1);
 			}
@@ -180,9 +214,23 @@ public class Game {
 	}
 
 	public void removeSnake(int entityNo) {
-		// singleLinkedList implementation
+		Snake bumSnake = this.snakes[entityNo];
+		this.board[bumSnake.getPos().y][bumSnake.getPos().x] = ' ';
+		Node temp = bumSnake.positionLinkedList.getHead();
+		while (temp != null) {
+			Position partPos = (Position)temp.getData();
+			this.board[partPos.y][partPos.x] = ' ';
+			temp = temp.getLink();
+		}
+		this.snakes[entityNo] = null;
 	}
 
+	public void removeTrap(int entityNo) {
+		this.board[this.traps[entityNo].y][this.traps[entityNo].x] = ' ';
+		this.traps[entityNo] = null;
+		this.trapsTimes[entityNo] = 0;
+	}
+	
 	public char[][] readBoardFromFile(String fileName) {
 		char[][] board = new char[23][55];
 		Scanner scanner = null;
@@ -306,6 +354,23 @@ public class Game {
 		return 0;
 
 	}
+	
+	public boolean checkTail(Position pos) {
+		for (int i = 0; i< this.snakes.length; i++) {
+			if (this.snakes[i] != null) {
+				Snake nextSnake = this.snakes[i];
+				Node temp = nextSnake.positionLinkedList.getHead();
+				while (temp != null) {
+					Position partPos = (Position)temp.getData();
+					if (partPos.x == pos.x && partPos.y == pos.y) {
+						return true;
+					}
+					temp = temp.getLink();
+				}
+			}
+		}
+		return false;
+	}
 
 	public void updatePlayerPos() {
 		int xDirection = 0, yDirection = 0;
@@ -323,7 +388,7 @@ public class Game {
 
 		this.board[player.getPos().y][player.getPos().x] = ' ';
 		Position newPlayerPos = new Position(player.getPos().x + xDirection, player.getPos().y + yDirection);
-		if (!checkWall(newPlayerPos) && !checkWalkers(newPlayerPos)) {
+		if (!checkWall(newPlayerPos) && !checkWalkers(newPlayerPos) && !checkTail(newPlayerPos)) {
 			char collectible = checkCollectible(newPlayerPos);
 			if (collectible != 0) {
 				if (collectible == '@') {
@@ -341,13 +406,15 @@ public class Game {
 
 	public void putTrap() {
 		if (player.getTrapCount() > 0) {
-			player.setTrapCount(player.getTrapCount() - 1);
-			this.traps[this.trapsCount++] = player.getPos();
+			player.setTrapCount(player.getTrapCount()-1);
+			this.traps[this.trapsMaxCount] = player.getPos();
+			this.trapsTimes[this.trapsMaxCount] = 10;
+			this.trapsMaxCount++;
 		}
 	}
 
 	public void addTrapsToBoard() {
-		for (int i = 0; i < this.trapsCount; i++) {
+		for (int i = 0; i < this.trapsMaxCount; i++) {
 			if (this.traps[i] != null) {// for sign deactived traps, they still in memory cuz i lazy to write basic
 										// garbage collector
 				if (this.board[this.traps[i].y][this.traps[i].x] != 'P') {
@@ -570,7 +637,7 @@ public class Game {
 				if (check3Wall(snakes[i].getPos()) != 5) {
 					snakeReserving(snakes[i]);
 					snakes[i].currentDirection = (snakes[i].currentDirection + 2) % 4;
-			
+					snakes[i].randomMode=true;
 				}
 
 				if (snakes[i].positionLinkedList != null) {
@@ -914,7 +981,7 @@ public class Game {
 		cn.getTextWindow().setCursorPosition(57, 15);
 		System.out.print("---" + this.computerName + "---");
 		cn.getTextWindow().setCursorPosition(57, 16);
-		System.out.print(String.format(" %-7s:%5d", "S Robot", 0));
+		System.out.print(String.format(" %-7s:%5d", "S Robot", this.lesnekocounte));
 		cn.getTextWindow().setCursorPosition(57, 17);
 		System.out.print(String.format(" %-7s:%5d", "Score", this.computerScore));
 
