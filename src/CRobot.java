@@ -1,4 +1,5 @@
 
+
 public class CRobot {
 	private Position pos;
 	private Position targetPos;

@@ -16,7 +16,7 @@ public class Game {
 	TextMouseListener tmlis;
 	KeyListener klis;
 
-	private char[][] board = readBoardFromFile("src/yilanliyilanoyunu/maze.txt");
+	private char[][] board = readBoardFromFile("src/maze.txt");
 	private Player player = spawnPlayer();
 	private CRobot cRobot = spawnCRobot();
 	private Snake[] snakes = new Snake[15];
@@ -27,12 +27,14 @@ public class Game {
 	private int totalTime = 0;
 	private CircularQueue inputQueue = new CircularQueue(15);
 	private Position[] traps = new Position[100];
-	private int trapsCount = 0;
-	private int count;
+	private int trapsMaxCount = 0;
+	private int[] trapsTimes = new int[100];
+	
+	private int count;//haci neyin count u
 
-	Stack stack;
+	Stack stack;//neyin stack ı
 	Stack stack2;
-	private int lesnekocounte = 0;
+	private int lesnekocounte = 0;//bu ne demek:D
 
 	// ------ Standard variables for mouse and keyboard ------
 	public int mousepr; // mouse pressed?
@@ -105,7 +107,28 @@ public class Game {
 			if ((stack2.isEmpty()))
 				pathLine();
 
-			if (totalTime % (6 * timeUnit) == 0) {
+			if (totalTime % (4 * timeUnit) == 0) {
+				//check snake pos for trap
+				boolean hardBreak = false;
+				for (int i = 0; i < this.trapsMaxCount; i++) {
+					if (this.traps[i] != null) {
+						for (int j = 0; j < this.snakes.length; j++) {
+							if (this.snakes[j] != null) {
+								if (Math.abs(this.traps[i].x - this.snakes[j].getPos().x) <= 1 && Math.abs(this.traps[i].y - this.snakes[j].getPos().y) <= 1) {
+									removeTrap(i);
+									removeSnake(j);
+									this.player.setEnergy(this.player.getEnergy()+500);
+									this.player.setScore(this.player.getScore()+200);
+									hardBreak = true;
+									break;
+								}
+							}
+						}
+						if (hardBreak) {
+							break;
+						}
+					}
+				}
 				updateSposition();
 			}
 			if (mousepr == 1) {
@@ -145,6 +168,17 @@ public class Game {
 				enqueueInput();
 			}
 
+			if(totalTime % (10*timeUnit) == 0) {
+				for(int i = 0; i < this.trapsMaxCount; i++) {
+					if (this.traps[i] != null) {
+						if (this.trapsTimes[i]-- == 0) {
+							this.board[this.traps[i].y][this.traps[i].x] = ' ';
+							this.traps[i] = null;
+						}
+					}
+				}
+			}
+			
 			if (player.getEnergy() > 0) {
 				player.setEnergy(player.getEnergy() - 1);
 			}
@@ -180,9 +214,23 @@ public class Game {
 	}
 
 	public void removeSnake(int entityNo) {
-		// singleLinkedList implementation
+		Snake bumSnake = this.snakes[entityNo];
+		this.board[bumSnake.getPos().y][bumSnake.getPos().x] = ' ';
+		Node temp = bumSnake.positionLinkedList.getHead();
+		while (temp != null) {
+			Position partPos = (Position)temp.getData();
+			this.board[partPos.y][partPos.x] = ' ';
+			temp = temp.getLink();
+		}
+		this.snakes[entityNo] = null;
 	}
 
+	public void removeTrap(int entityNo) {
+		this.board[this.traps[entityNo].y][this.traps[entityNo].x] = ' ';
+		this.traps[entityNo] = null;
+		this.trapsTimes[entityNo] = 0;
+	}
+	
 	public char[][] readBoardFromFile(String fileName) {
 		char[][] board = new char[23][55];
 		Scanner scanner = null;
@@ -211,29 +259,32 @@ public class Game {
 		}
 		return rPos;
 	}
+
 	public int check3Wall(Position pos) {
-		int count=0;
-		int i=0;
-		int y=pos.y;
-		int x=pos.x;
-		if(checkWall(new Position(x,y+1))||checkWalkers3(new Position(x,y+1)))
-			count++; i+=3;
-		if(checkWall(new Position(x,y-1))||checkWalkers3(new Position(x,y-1)))
-			count++; i+=2;
-		if(checkWall(new Position(x+1,y))||checkWalkers3(new Position(x+1,y)))
+		int count = 0;
+		int i = 0;
+		int y = pos.y;
+		int x = pos.x;
+		if (checkWall(new Position(x, y + 1)) || checkWalkers3(new Position(x, y + 1)))
 			count++;
-		if(checkWall(new Position(x-1,y))||checkWalkers3(new Position(x-1,y)))
-			count++; i+=1;
-		
-			
-		if(count==3) {
-			if(i==6)
+		i += 3;
+		if (checkWall(new Position(x, y - 1)) || checkWalkers3(new Position(x, y - 1)))
+			count++;
+		i += 2;
+		if (checkWall(new Position(x + 1, y)) || checkWalkers3(new Position(x + 1, y)))
+			count++;
+		if (checkWall(new Position(x - 1, y)) || checkWalkers3(new Position(x - 1, y)))
+			count++;
+		i += 1;
+
+		if (count == 3) {
+			if (i == 6)
 				return 0;
-			if(i==5) 
+			if (i == 5)
 				return 1;
-			if(i==4)
+			if (i == 4)
 				return 2;
-			if(i==3)
+			if (i == 3)
 				return 3;
 		}
 		return 5;
@@ -262,8 +313,9 @@ public class Game {
 			return false;
 		}
 	}
+
 	public boolean checkWalkers3(Position pos) {
-		if (this.board[pos.y][pos.x] == 'P' || this.board[pos.y][pos.x] == 'C' ) {
+		if (this.board[pos.y][pos.x] == 'P' || this.board[pos.y][pos.x] == 'C') {
 			return true;
 		} else {
 			return false;
@@ -290,6 +342,7 @@ public class Game {
 		return 0;
 
 	}
+
 	public char checkCollectible2(Position pos) {
 		if (pos != null) {
 			if (this.board[pos.y][pos.x] == '1' || this.board[pos.y][pos.x] == '2' || this.board[pos.y][pos.x] == '3') {
@@ -300,6 +353,23 @@ public class Game {
 		}
 		return 0;
 
+	}
+	
+	public boolean checkTail(Position pos) {
+		for (int i = 0; i< this.snakes.length; i++) {
+			if (this.snakes[i] != null) {
+				Snake nextSnake = this.snakes[i];
+				Node temp = nextSnake.positionLinkedList.getHead();
+				while (temp != null) {
+					Position partPos = (Position)temp.getData();
+					if (partPos.x == pos.x && partPos.y == pos.y) {
+						return true;
+					}
+					temp = temp.getLink();
+				}
+			}
+		}
+		return false;
 	}
 
 	public void updatePlayerPos() {
@@ -318,7 +388,7 @@ public class Game {
 
 		this.board[player.getPos().y][player.getPos().x] = ' ';
 		Position newPlayerPos = new Position(player.getPos().x + xDirection, player.getPos().y + yDirection);
-		if (!checkWall(newPlayerPos) && !checkWalkers(newPlayerPos)) {
+		if (!checkWall(newPlayerPos) && !checkWalkers(newPlayerPos) && !checkTail(newPlayerPos)) {
 			char collectible = checkCollectible(newPlayerPos);
 			if (collectible != 0) {
 				if (collectible == '@') {
@@ -336,13 +406,15 @@ public class Game {
 
 	public void putTrap() {
 		if (player.getTrapCount() > 0) {
-			player.setTrapCount(player.getTrapCount() - 1);
-			this.traps[this.trapsCount++] = player.getPos();
+			player.setTrapCount(player.getTrapCount()-1);
+			this.traps[this.trapsMaxCount] = player.getPos();
+			this.trapsTimes[this.trapsMaxCount] = 10;
+			this.trapsMaxCount++;
 		}
 	}
 
 	public void addTrapsToBoard() {
-		for (int i = 0; i < this.trapsCount; i++) {
+		for (int i = 0; i < this.trapsMaxCount; i++) {
 			if (this.traps[i] != null) {// for sign deactived traps, they still in memory cuz i lazy to write basic
 										// garbage collector
 				if (this.board[this.traps[i].y][this.traps[i].x] != 'P') {
@@ -380,8 +452,8 @@ public class Game {
 		if (!stack2.isEmpty()) {
 
 			Position position = (Position) stack2.pop();
-			cRobot.setPos(position);
 			if (!stack2.isEmpty()) {
+
 				this.board[position.y][position.x] = ' ';
 				Position newPosition = (Position) stack2.peek();
 
@@ -395,6 +467,8 @@ public class Game {
 						computerScore += (int) Math.pow(treasure, 2);
 					}
 				}
+
+				cRobot.setPos(newPosition);
 				this.board[newPosition.y][newPosition.x] = 'C';
 			}
 		}
@@ -519,72 +593,40 @@ public class Game {
 	}
 
 	public void updateSposition() {
-		
-		
+
 		for (int i = 0; i < snakes.length; i++) {
 			if (snakes[i] != null && !snakes[i].haveTarget) {
 				Position rPos;
 				do {
 					rPos = createRandomPos();
-				} while (checkCollectible(rPos) == 0 || checkWall(rPos) || checkWalkers(rPos));
+				} while (checkCollectible2(rPos) == 0 || checkWall(rPos) || checkWalkers(rPos));
 				snakes[i].setTarget(rPos);
 			}
 		}
 		for (int i = 0; i < snakes.length; i++) {
-			
-			
-			
+
 			if (snakes[i] != null && snakes[i].haveTarget) {
-				if(check3Wall(snakes[i].getPos())!=5) {
+				if (check3Wall(snakes[i].getPos()) != 5) {
 					snakeReserving(snakes[i]);
-					 showSnakeTail(snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
-					 snakes[i].currentDirection=check3Wall(snakes[i].getPos());
-					 if(snakes[i].collactibleLinkedList!=null) {
-						    Node prev = null;
-						    Node current =snakes[i].collactibleLinkedList.getHead();
-						    Node next = null;
-
-						    while (current != null) {
-						        next = current.getLink();    
-						        current.setLink(prev);        
-						        prev = current;               
-						        current = next;
-						    }
-
-						    snakes[i].collactibleLinkedList.setHead(prev); 
-
-					}
-					if(snakes[i].positionLinkedList!=null) {
-					    Node prev = null;
-					    Node current =snakes[i].positionLinkedList.getHead();
-					    Node next = null;
-
-					    while (current != null) {
-					        next = current.getLink();    
-					        current.setLink(prev);        
-					        prev = current;               
-					        current = next;
-					    }
-
-					    snakes[i].positionLinkedList.setHead(prev); 
-
+					snakes[i].currentDirection = (snakes[i].currentDirection + 2) % 4;
+					snakes[i].randomMode=true;
 				}
+
+				if (snakes[i].positionLinkedList != null) {
+					board[snakes[i].getPos().y][snakes[i].getPos().x] = ' ';
 				}
-				
-				
-				if(snakes[i].positionLinkedList!=null) {
-				board[snakes[i].getPos().y][snakes[i].getPos().x] = ' ';}
 				if (!snakes[i].randomMode) {
 					if (snakes[i].getPos().x < snakes[i].getTargetPos().x
 							&& !(board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == '#'
 									|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'P'
 									|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'C')) {
 						Position newSnakePos = new Position(snakes[i].getPos().x + 1, snakes[i].getPos().y);
-						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
+						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
+								snakes[i].positionLinkedList);
 						if (!controlEating) {
-						    updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
 						} else {
-						    updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
 						snakes[i].setPos(newSnakePos);
 						snakes[i].currentDirection = 0;
@@ -593,24 +635,26 @@ public class Game {
 									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'P'
 									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'C')) {
 						Position newSnakePos = new Position(snakes[i].getPos().x - 1, snakes[i].getPos().y);
-						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
+						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
+								snakes[i].positionLinkedList);
 						if (!controlEating) {
-						    updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
 						} else {
-						    updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
-						snakes[i].setPos(newSnakePos);
+						snakes[i].setPos(newSnakePos);	
 						snakes[i].currentDirection = 1;
 					} else if (snakes[i].getPos().y < snakes[i].getTargetPos().y
 							&& !(board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == '#'
 									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'P'
 									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'C')) {
 						Position newSnakePos = new Position(snakes[i].getPos().x, snakes[i].getPos().y + 1);
-						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
+						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
+								snakes[i].positionLinkedList);
 						if (!controlEating) {
-						    updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
 						} else {
-						    updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
 						snakes[i].setPos(newSnakePos);
 						snakes[i].currentDirection = 2;
@@ -619,15 +663,16 @@ public class Game {
 									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'P'
 									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'C')) {
 						Position newSnakePos = new Position(snakes[i].getPos().x, snakes[i].getPos().y - 1);
-						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
+						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
+								snakes[i].positionLinkedList);
 						if (!controlEating) {
-						    updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
 						} else {
-						    updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
 						snakes[i].setPos(newSnakePos);
 						snakes[i].currentDirection = 3;
-					
+
 					} else
 						snakes[i].randomMode = true;
 				}
@@ -686,11 +731,12 @@ public class Game {
 							|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'P'
 							|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'C')) {
 						Position newSnakePos = new Position(snakes[i].getPos().x + 1, snakes[i].getPos().y);
-						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
+						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
+								snakes[i].positionLinkedList);
 						if (!controlEating) {
-						    updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
 						} else {
-						    updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
 						snakes[i].setPos(newSnakePos);
 						snakes[i].currentDirection = 0;
@@ -699,11 +745,12 @@ public class Game {
 									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'P'
 									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'C')) {
 						Position newSnakePos = new Position(snakes[i].getPos().x - 1, snakes[i].getPos().y);
-						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
+						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
+								snakes[i].positionLinkedList);
 						if (!controlEating) {
-						    updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
 						} else {
-						    updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
 						snakes[i].setPos(newSnakePos);
 						snakes[i].currentDirection = 1;
@@ -712,11 +759,12 @@ public class Game {
 									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'P'
 									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'C')) {
 						Position newSnakePos = new Position(snakes[i].getPos().x, snakes[i].getPos().y + 1);
-						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
+						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
+								snakes[i].positionLinkedList);
 						if (!controlEating) {
-						    updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
 						} else {
-						    updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
 						snakes[i].setPos(newSnakePos);
 						snakes[i].currentDirection = 2;
@@ -725,11 +773,12 @@ public class Game {
 									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'P'
 									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'C')) {
 						Position newSnakePos = new Position(snakes[i].getPos().x, snakes[i].getPos().y - 1);
-						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
+						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
+								snakes[i].positionLinkedList);
 						if (!controlEating) {
-						    updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
 						} else {
-						    updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
+							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
 						snakes[i].setPos(newSnakePos);
 						snakes[i].currentDirection = 3;
@@ -743,27 +792,25 @@ public class Game {
 				}
 				board[snakes[i].getPos().y][snakes[i].getPos().x] = 'S';
 				showSnakeTail(snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
-				 
-			} 
-			
+
+			}
+
 		}
-		
+
 	}
-	
-	
 
 	public boolean eating(int y, int x, SingleLinkedList list, SingleLinkedList list2) {
 		char point = this.board[y][x];
-		
+
 		if (point == '1' || point == '2' || point == '3') {
-			if(list2!=null) {
+			if (list2 != null) {
 				Node current = list2.getHead();
 				while (current != null) {
-					Position position2 =(Position) current.getData();
-					if(position2.x==x&&position2.y==y) {
+					Position position2 = (Position) current.getData();
+					if (position2.x == x && position2.y == y) {
 						return false;
 					}
-				    current = current.getLink();
+					current = current.getLink();
 				}
 			}
 			list.add(point);
@@ -777,25 +824,21 @@ public class Game {
 		if (coordinates.getHead() == null)
 			return;
 
-		Node current = coordinates.getHead();
-		Position tempPos = new Position(((Position) current.getData()).x, ((Position) current.getData()).y);
-		Position lastPos = new Position(tempPos.x, tempPos.y);
+		if (coordinates != null) {
+			Node current = coordinates.getHead();
 
-		current.setData(new Position(newTailPos.x, newTailPos.y));
-		current = current.getLink();
+			Position temp = new Position(newTailPos.x, newTailPos.y);
+			Position nextTemp;
 
-		while (current != null) {
-			Position nextTemp = new Position(((Position) current.getData()).x, ((Position) current.getData()).y);
-			current.setData(new Position(tempPos.x, tempPos.y));
-			tempPos = nextTemp;
-			if (current.getLink() == null) {
-				lastPos = new Position(nextTemp.x, nextTemp.y);
+			while (current != null) {
+				nextTemp = (Position) current.getData();
+				current.setData(new Position(temp.x, temp.y));
+
+				temp = nextTemp;
+				current = current.getLink();
 			}
-			current = current.getLink();
-		}
 
-		if (lastPos.y >= 0 && lastPos.y < board.length && lastPos.x >= 0 && lastPos.x < board[0].length) {
-			board[lastPos.y][lastPos.x] = ' ';
+			board[temp.y][temp.x] = ' ';
 		}
 	}
 
@@ -804,17 +847,8 @@ public class Game {
 			return;
 
 		Node current = coordinates.getHead();
-		Position tempPos = new Position(((Position) current.getData()).x, ((Position) current.getData()).y);
+		current.setData(newTailPos);
 
-		current.setData(new Position(newTailPos.x, newTailPos.y));
-		current = current.getLink();
-
-		while (current != null) {
-			Position nextTemp = new Position(((Position) current.getData()).x, ((Position) current.getData()).y);
-			current.setData(new Position(tempPos.x, tempPos.y));
-			tempPos = nextTemp;
-			current = current.getLink();
-		}
 	}
 
 	public void showSnakeTail(SingleLinkedList kuyruk, SingleLinkedList coordinates) {
@@ -830,135 +864,59 @@ public class Game {
 			dataNode = dataNode.getLink();
 		}
 	}
-	
+
 	public void snakeReserving(Snake snake) {
-		/*if (snake.collactibleLinkedList != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
 
-			Node dataNode = snake.collactibleLinkedList.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				char snakeData = (char) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			snake.collactibleLinkedList = newList;
-		}*/
 		if (snake.positionLinkedList != null) {
-	        Node current = snake.positionLinkedList.getHead();
+			Node current = snake.positionLinkedList.getHead();
 
-	        Position temp = new Position(snake.getPos().x, snake.getPos().y);
-	        Position nextTemp;
+			Position temp = new Position(snake.getPos().x, snake.getPos().y);
+			Position nextTemp;
 
-	        while (current != null) {
-	            nextTemp = (Position) current.getData();
-	            current.setData(new Position(temp.x, temp.y));
-	            
-	            temp = nextTemp;
-	            current = current.getLink();
-	        }
+			while (current != null) {
+				nextTemp = (Position) current.getData();
+				current.setData(new Position(temp.x, temp.y));
 
-	        snake.setPos(temp);
-	        board[temp.y][temp.x]='S';
-	    }
-		/*
+				temp = nextTemp;
+				current = current.getLink();
+			}
+
+			snake.setPos(temp);
+			board[temp.y][temp.x] = 'S';
+		}
+
+		if (snake.collactibleLinkedList != null) {
+			Node prev = null;
+			Node current = snake.collactibleLinkedList.getHead();
+			Node next = null;
+
+			while (current != null) {
+				next = current.getLink();
+				current.setLink(prev);
+				prev = current;
+				current = next;
+			}
+
+			snake.collactibleLinkedList.setHead(prev);
+
+		}
 		if (snake.positionLinkedList != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-			
-			Node dataNode = snake.positionLinkedList.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
+			Node prev = null;
+			Node current = snake.positionLinkedList.getHead();
+			Node next = null;
+
+			while (current != null) {
+				next = current.getLink();
+				current.setLink(prev);
+				prev = current;
+				current = next;
 			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				Position snakeData = (Position) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			snake.positionLinkedList = newList;
-			
-		}*/
-		
+
+			snake.positionLinkedList.setHead(prev);
+
+		}
 		showSnakeTail(snake.collactibleLinkedList, snake.positionLinkedList);
-		
-	/*	if (snake.collactibleLinkedList != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
 
-			Node dataNode = snake.collactibleLinkedList.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				char snakeData = (char) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			snake.collactibleLinkedList = newList;
-		}
-		if (snake.positionLinkedList != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-			
-			Node dataNode = snake.positionLinkedList.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				Position snakeData = (Position) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			snake.positionLinkedList = newList;
-			
-		}*/
-
-		
-	}
-	
-	public void reverseHelp(SingleLinkedList listcol ,SingleLinkedList listPos) {
-		if (listPos != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-			
-			Node dataNode = listPos.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				Position snakeData = (Position) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			listPos = newList;
-			
-		}
-		
-		if (listcol != null) {
-			Stack stack = new Stack(100);
-			SingleLinkedList newList = new SingleLinkedList();
-
-			Node dataNode = listcol.getHead();
-			while (dataNode != null) {
-				stack.push(dataNode);
-				dataNode = dataNode.getLink();
-			}
-			while (!stack.isEmpty()) {
-				Node snakeNodeData = (Node) stack.pop();
-				char snakeData = (char) snakeNodeData.getData();
-				newList.add(snakeData);
-			}
-			listcol = newList;
-		}
-		
 	}
 
 	public void printMap() {
@@ -995,7 +953,7 @@ public class Game {
 		cn.getTextWindow().setCursorPosition(57, 15);
 		System.out.print("---" + this.computerName + "---");
 		cn.getTextWindow().setCursorPosition(57, 16);
-		System.out.print(String.format(" %-7s:%5d", "S Robot", 0));
+		System.out.print(String.format(" %-7s:%5d", "S Robot", this.lesnekocounte));
 		cn.getTextWindow().setCursorPosition(57, 17);
 		System.out.print(String.format(" %-7s:%5d", "Score", this.computerScore));
 
