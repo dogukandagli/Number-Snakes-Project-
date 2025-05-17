@@ -475,34 +475,6 @@ public class Game {
 
 	}
 
-	public void newPathLine() {
-		int count = 0;
-		Stack stack = pathFinding();
-
-		while (count < 3500) {
-			int a = stack.size();
-			Stack stack2 = pathFinding();
-			if (stack2.size() < a) {
-				stack = stack2;
-				a = stack2.size();
-			}
-
-			count++;
-		}
-
-		stack2 = new Stack(stack.size());
-		while (!stack.isEmpty()) {
-			Position position = (Position) stack.pop();
-			stack2.push(position);
-
-			if (!position.equals(cRobot.getPos()) && !position.equals(cRobot.getTargetTreasure())
-					&& checkCollectible(position) == 0 && !checkWalkers2(position)) {
-				board[position.y][position.x] = '.';
-			}
-
-		}
-	}
-
 	public void pathLine() {
 		int count = 0;
 
@@ -627,7 +599,7 @@ public class Game {
 				Position rPos;
 				do {
 					rPos = createRandomPos();
-				} while (checkCollectible(rPos) == 0 || checkWall(rPos) || checkWalkers(rPos));
+				} while (checkCollectible2(rPos) == 0 || checkWall(rPos) || checkWalkers(rPos));
 				snakes[i].setTarget(rPos);
 			}
 		}
@@ -670,7 +642,7 @@ public class Game {
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
-						snakes[i].setPos(newSnakePos);
+						snakes[i].setPos(newSnakePos);	
 						snakes[i].currentDirection = 1;
 					} else if (snakes[i].getPos().y < snakes[i].getTargetPos().y
 							&& !(board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == '#'
