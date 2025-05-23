@@ -29,12 +29,12 @@ public class Game {
 	private Position[] traps = new Position[100];
 	private int trapsMaxCount = 0;
 	private int[] trapsTimes = new int[100];
-	
-	private int count;//haci neyin count u
 
-	Stack stack;//neyin stack ı
+	private int count;// haci neyin count u
+
+	Stack stack;// neyin stack ı
 	Stack stack2;
-	private int lesnekocounte = 0;//bu ne demek:D
+	private int lesnekocounte = 0;// bu ne demek:D
 
 	// ------ Standard variables for mouse and keyboard ------
 	public int mousepr; // mouse pressed?
@@ -102,23 +102,26 @@ public class Game {
 		// main game loop
 		pathLine();
 		while (true) {
+
 			addTrapsToBoard();
 			printMap();
+			
 			if ((stack2.isEmpty()))
 				pathLine();
 
 			if (totalTime % (4 * timeUnit) == 0) {
-				//check snake pos for trap
+				// check snake pos for trap
 				boolean hardBreak = false;
 				for (int i = 0; i < this.trapsMaxCount; i++) {
 					if (this.traps[i] != null) {
 						for (int j = 0; j < this.snakes.length; j++) {
 							if (this.snakes[j] != null) {
-								if (Math.abs(this.traps[i].x - this.snakes[j].getPos().x) <= 1 && Math.abs(this.traps[i].y - this.snakes[j].getPos().y) <= 1) {
+								if (Math.abs(this.traps[i].x - this.snakes[j].getPos().x) <= 1
+										&& Math.abs(this.traps[i].y - this.snakes[j].getPos().y) <= 1) {
 									removeTrap(i);
 									removeSnake(j);
-									this.player.setEnergy(this.player.getEnergy()+500);
-									this.player.setScore(this.player.getScore()+200);
+									this.player.setEnergy(this.player.getEnergy() + 500);
+									this.player.setScore(this.player.getScore() + 200);
 									hardBreak = true;
 									break;
 								}
@@ -156,6 +159,7 @@ public class Game {
 
 			if (totalTime % (4 * timeUnit) == 0) {
 				movementCrobot();
+				checkNeighborHarming();
 			}
 
 			if (totalTime % (20 * timeUnit) == 0) {
@@ -168,8 +172,8 @@ public class Game {
 				enqueueInput();
 			}
 
-			if(totalTime % (10*timeUnit) == 0) {
-				for(int i = 0; i < this.trapsMaxCount; i++) {
+			if (totalTime % (10 * timeUnit) == 0) {
+				for (int i = 0; i < this.trapsMaxCount; i++) {
 					if (this.traps[i] != null) {
 						if (this.trapsTimes[i]-- == 0) {
 							this.board[this.traps[i].y][this.traps[i].x] = ' ';
@@ -178,14 +182,15 @@ public class Game {
 					}
 				}
 			}
-			
+
 			if (player.getEnergy() > 0) {
 				player.setEnergy(player.getEnergy() - 1);
 			}
-
+			
 			Thread.sleep(timeUnit);
 			totalTime += timeUnit;
 		}
+		
 	}
 
 	public Position createRandomPos() {
@@ -218,7 +223,7 @@ public class Game {
 		this.board[bumSnake.getPos().y][bumSnake.getPos().x] = ' ';
 		Node temp = bumSnake.positionLinkedList.getHead();
 		while (temp != null) {
-			Position partPos = (Position)temp.getData();
+			Position partPos = (Position) temp.getData();
 			this.board[partPos.y][partPos.x] = ' ';
 			temp = temp.getLink();
 		}
@@ -230,7 +235,7 @@ public class Game {
 		this.traps[entityNo] = null;
 		this.trapsTimes[entityNo] = 0;
 	}
-	
+
 	public char[][] readBoardFromFile(String fileName) {
 		char[][] board = new char[23][55];
 		Scanner scanner = null;
@@ -354,14 +359,14 @@ public class Game {
 		return 0;
 
 	}
-	
+
 	public boolean checkTail(Position pos) {
-		for (int i = 0; i< this.snakes.length; i++) {
+		for (int i = 0; i < this.snakes.length; i++) {
 			if (this.snakes[i] != null) {
 				Snake nextSnake = this.snakes[i];
 				Node temp = nextSnake.positionLinkedList.getHead();
 				while (temp != null) {
-					Position partPos = (Position)temp.getData();
+					Position partPos = (Position) temp.getData();
 					if (partPos.x == pos.x && partPos.y == pos.y) {
 						return true;
 					}
@@ -406,7 +411,7 @@ public class Game {
 
 	public void putTrap() {
 		if (player.getTrapCount() > 0) {
-			player.setTrapCount(player.getTrapCount()-1);
+			player.setTrapCount(player.getTrapCount() - 1);
 			this.traps[this.trapsMaxCount] = player.getPos();
 			this.trapsTimes[this.trapsMaxCount] = 10;
 			this.trapsMaxCount++;
@@ -467,7 +472,6 @@ public class Game {
 						computerScore += (int) Math.pow(treasure, 2);
 					}
 				}
-
 				cRobot.setPos(newPosition);
 				this.board[newPosition.y][newPosition.x] = 'C';
 			}
@@ -609,7 +613,7 @@ public class Game {
 				if (check3Wall(snakes[i].getPos()) != 5) {
 					snakeReserving(snakes[i]);
 					snakes[i].currentDirection = (snakes[i].currentDirection + 2) % 4;
-					snakes[i].randomMode=true;
+					snakes[i].randomMode = true;
 				}
 
 				if (snakes[i].positionLinkedList != null) {
@@ -642,7 +646,7 @@ public class Game {
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
-						snakes[i].setPos(newSnakePos);	
+						snakes[i].setPos(newSnakePos);
 						snakes[i].currentDirection = 1;
 					} else if (snakes[i].getPos().y < snakes[i].getTargetPos().y
 							&& !(board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == '#'
@@ -917,6 +921,54 @@ public class Game {
 		}
 		showSnakeTail(snake.collactibleLinkedList, snake.positionLinkedList);
 
+	}
+
+	public void checkNeighborHarming() {
+		if (cRobot != null) {
+			int[] dx = { 0, 0, 1, -1 };
+			int[] dy = { 1, -1, 0, 0 };
+
+			for (int i = 0; i < 4; i++) {
+				int neighborX = cRobot.getPos().x + dx[i];
+				int neighborY = cRobot.getPos().y + dy[i];
+				Position neighborPosition = new Position(neighborX, neighborY);
+				if (player.getPos().x == neighborPosition.x && player.getPos().y == neighborPosition.y) {
+					player.setLifePoint(player.getLifePoint() - 30);
+					break;
+				}
+			}
+		}
+		for (int i = 0; i < snakes.length; i++) {
+			if (snakes[i] != null) {
+				int[] dx = { 0, 0, 1, -1 };
+				int[] dy = { 1, -1, 0, 0 };
+				for (int j = 0; j < 4; j++) {
+					int neighborX = snakes[i].getPos().x + dx[j];
+					int neighborY = snakes[i].getPos().y + dy[j];
+					Position neighborPosition = new Position(neighborX, neighborY);
+					if (player.getPos().x == neighborPosition.x && player.getPos().y == neighborPosition.y) {
+						player.setLifePoint(player.getLifePoint() - 1);
+						break;
+					}
+				}
+				Node current = snakes[i].positionLinkedList.getHead();
+
+				while (current != null) {
+					Position currentPosition = (Position) current.getData();
+					for (int j = 0; j < 4; j++) {
+						int neighborX = currentPosition.x + dx[j];
+						int neighborY = currentPosition.y + dy[j];
+						Position neighborPosition = new Position(neighborX, neighborY);
+						if (player.getPos().x == neighborPosition.x && player.getPos().y == neighborPosition.y) {
+							player.setLifePoint(player.getLifePoint() - 1);
+						}
+
+					}
+					current = current.getLink();
+				}
+			}
+
+		}
 	}
 
 	public void printMap() {
