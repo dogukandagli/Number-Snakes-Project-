@@ -15,28 +15,27 @@ public class SingleLinkedList {
 	}
 
 	public void delete(Object dataToDelete) {
-		if (head == null) {
-			System.out.println("linked list is empty");
-		} else {
-			// Baştan silinecekler
-			while (head != null && (char) head.getData() == (char) dataToDelete) {
-				head = head.getLink();
-			}
+	    if (head == null) return;
 
-			Node temp = head;
-			Node previous = null;
+	    // Baştaki eşleşen düğümleri sil
+	    while (head != null && head.getData().equals(dataToDelete)) {
+	        head = head.getLink();
+	    }
 
-			while (temp != null) {
-				if ((char) temp.getData() == (char) dataToDelete) {
-					previous.setLink(temp.getLink());
-					temp = previous.getLink();
-				} else {
-					previous = temp;
-					temp = temp.getLink();
-				}
-			}
-		}
+	    Node current = head;
+	    Node previous = null;
+
+	    while (current != null) {
+	        if (current.getData().equals(dataToDelete)) {
+	            previous.setLink(current.getLink());
+	            current = previous.getLink();
+	        } else {
+	            previous = current;
+	            current = current.getLink();
+	        }
+	    }
 	}
+
 
 	public boolean search(Object item) {
 		boolean flag = false;

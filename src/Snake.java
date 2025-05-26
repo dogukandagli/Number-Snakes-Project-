@@ -15,6 +15,10 @@ public class Snake {
 		positionLinkedList = new SingleLinkedList();
 		collactibleLinkedList = new SingleLinkedList();
 	}
+	public Snake() {
+		positionLinkedList = new SingleLinkedList();
+		collactibleLinkedList = new SingleLinkedList();
+	}
 
 	public void setTarget(Position targetPos) {
     this.targetPos = new Position(targetPos.x, targetPos.y);

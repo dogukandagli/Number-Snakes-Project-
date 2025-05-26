@@ -105,10 +105,9 @@ public class Game {
 
 			addTrapsToBoard();
 			printMap();
-			
+
 			if ((stack2.isEmpty()))
 				pathLine();
-
 			if (totalTime % (4 * timeUnit) == 0) {
 				// check snake pos for trap
 				boolean hardBreak = false;
@@ -133,7 +132,11 @@ public class Game {
 					}
 				}
 				updateSposition();
+			
 			}
+			printMap();
+			checkSnakeCollision();
+
 			if (mousepr == 1) {
 
 				mousepr = 0;
@@ -186,11 +189,11 @@ public class Game {
 			if (player.getEnergy() > 0) {
 				player.setEnergy(player.getEnergy() - 1);
 			}
-			
+
 			Thread.sleep(timeUnit);
 			totalTime += timeUnit;
 		}
-		
+
 	}
 
 	public Position createRandomPos() {
@@ -432,7 +435,7 @@ public class Game {
 	public void enqueueInput() {
 		int a = (int) (Math.random() * 100);
 		if (a <= 50) {
-			inputQueue.enqueue('1');
+			inputQueue.enqueue('S');
 		} else if (50 < a && a <= 75) {
 			inputQueue.enqueue('2');
 		} else if (75 < a && a <= 88) {
@@ -440,7 +443,7 @@ public class Game {
 		} else if (88 < a && a <= 97) {
 			inputQueue.enqueue('@');
 		} else if (97 < a && a <= 100) {
-			inputQueue.enqueue('S');
+			inputQueue.enqueue('1');
 		}
 	}
 
@@ -616,9 +619,8 @@ public class Game {
 					snakes[i].randomMode = true;
 				}
 
-				if (snakes[i].positionLinkedList != null) {
 					board[snakes[i].getPos().y][snakes[i].getPos().x] = ' ';
-				}
+					
 				if (!snakes[i].randomMode) {
 					if (snakes[i].getPos().x < snakes[i].getTargetPos().x
 							&& !(board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == '#'
@@ -806,7 +808,7 @@ public class Game {
 	public boolean eating(int y, int x, SingleLinkedList list, SingleLinkedList list2) {
 		char point = this.board[y][x];
 
-		if (point == '1' || point == '2' || point == '3') {
+		if (point == '2' || point == '3') {
 			if (list2 != null) {
 				Node current = list2.getHead();
 				while (current != null) {
@@ -968,6 +970,212 @@ public class Game {
 				}
 			}
 
+		}
+	}
+
+	public Position position1(int SnakeDirection, Snake snake) {
+		Position Position = null;
+		Position snakesHead = snake.getPos();
+
+		if (SnakeDirection == 0)
+			Position = new Position(snakesHead.x + 1, snakesHead.y);
+		else if (SnakeDirection == 1)
+			Position = new Position(snakesHead.x - 1, snakesHead.y);
+		else if (SnakeDirection == 2)
+			Position = new Position(snakesHead.x, snakesHead.y - 1);
+		else if(SnakeDirection == 3)
+			Position = new Position(snakesHead.x, snakesHead.y + 1);
+
+		return Position;
+	}
+
+	public void checkSnakeCollision() {
+		boolean[] processed = new boolean[snakes.length]; // çarpışma yaşamış yılanları işaretle
+
+		for (int i = 0; i < snakes.length; i++) {
+			if (snakes[i] == null || processed[i])
+				continue;
+
+			Snake hitSnake = snakes[i];
+
+			for (int k = 0; k < 4; k++) {
+				Position collisionPosition = position1(k, hitSnake);
+
+				for (int j = 0; j < snakes.length; j++) {
+					if (snakes[j] == null || i == j || processed[j])
+						continue;
+
+					Position otherHead = snakes[j].getPos();
+					if (otherHead.x == collisionPosition.x && otherHead.y == collisionPosition.y) {
+						removeSnake(i);
+						removeSnake(j);
+						processed[i] = true;
+						processed[j] = true;
+						break; 
+					}
+
+					Node tailNode = snakes[j].positionLinkedList.getHead();
+					Node collactibleNode = snakes[j].collactibleLinkedList.getHead();
+
+					while (tailNode != null && collactibleNode != null) {
+						Position tailPos = (Position) tailNode.getData();
+						char value = (char) collactibleNode.getData();
+
+						if (tailPos.x == collisionPosition.x && tailPos.y == collisionPosition.y) {
+							if (value == '1') {
+								//collision1
+							} else if (value == '2' || value == '3') {
+								collision2or3(snakes[j], hitSnake, collisionPosition);
+								processed[i] = true;
+								processed[j] = true;
+							}
+							break; 
+						}
+
+						tailNode = tailNode.getLink();
+						collactibleNode = collactibleNode.getLink();
+					}
+				}
+			}
+		}
+	}
+
+
+	public void collision1(Snake crashedSnake, Snake hitSnake) {
+
+	}
+
+	public void collision2or3(Snake crashedSnake, Snake hitSnake, Position collisionPosition) {
+		Snake newSnake = new Snake(collisionPosition);
+
+		SingleLinkedList crashedSnakeTailPosition = crashedSnake.positionLinkedList;
+		SingleLinkedList crashedSnakeTailCollactible = crashedSnake.collactibleLinkedList;
+
+		Node crashedSnakeCurrentPositonNode = crashedSnakeTailPosition.getHead();
+		Node crashedSnakeCurrentCollactibleNode = crashedSnakeTailCollactible.getHead();
+
+		while (crashedSnakeCurrentPositonNode != null && crashedSnakeCurrentCollactibleNode != null) {
+
+			Position crashedSnakeCurrentPositon = (Position) crashedSnakeCurrentPositonNode.getData();
+
+			if (crashedSnakeCurrentPositon.x == collisionPosition.x && crashedSnakeCurrentPositon.y == collisionPosition.y) {
+				crashedSnakeCurrentPositonNode = crashedSnakeCurrentPositonNode.getLink();
+				crashedSnakeCurrentCollactibleNode = crashedSnakeCurrentCollactibleNode.getLink();
+				while (crashedSnakeCurrentPositonNode != null && crashedSnakeCurrentCollactibleNode != null) {
+					Position deletePosition = (Position) crashedSnakeCurrentPositonNode.getData();
+					char deleteCollactible = (char) crashedSnakeCurrentCollactibleNode.getData();
+
+					newSnake.positionLinkedList.add(deletePosition);
+					newSnake.collactibleLinkedList.add(deleteCollactible);
+					crashedSnake.collactibleLinkedList.delete(deleteCollactible);
+					crashedSnake.positionLinkedList.delete(deletePosition);
+					crashedSnakeCurrentPositonNode = crashedSnakeCurrentPositonNode.getLink();
+					crashedSnakeCurrentCollactibleNode = crashedSnakeCurrentCollactibleNode.getLink();
+				}
+				
+				break;
+			}
+			crashedSnakeCurrentPositonNode = crashedSnakeCurrentPositonNode.getLink();
+			crashedSnakeCurrentCollactibleNode = crashedSnakeCurrentCollactibleNode.getLink();
+		}
+		updateTailPositions(crashedSnake.getPos(), crashedSnake.positionLinkedList);
+		int[] dx = { 0, 0, 1, -1 };
+		int[] dy = { 1, -1, 0, 0 };
+		Position crashedSnakeHeadTail = crashedSnake.getPos() ;
+		for (int i = 0; i < 4; i++) {
+			if (board[crashedSnakeHeadTail.y + dy[i]][crashedSnakeHeadTail.x + dx[i]] == ' ') {
+				crashedSnake.setPos(new Position(crashedSnakeHeadTail.x + dx[i], crashedSnakeHeadTail.y + dy[i]));
+				board[crashedSnakeHeadTail.y + dy[i]][crashedSnakeHeadTail.x + dx[i]] = 'S';
+				break;
+			}
+		}
+		showSnakeTail(crashedSnake.collactibleLinkedList, crashedSnake.positionLinkedList);
+	
+		snakeReserving(newSnake);
+		newSnake.haveTarget = false;
+		newSnake.randomMode = false;
+		newSnake.currentDirection = (int) (Math.random() * 4);
+		showSnakeTail(newSnake.collactibleLinkedList, newSnake.positionLinkedList);
+		
+
+		if (hitSnake.positionLinkedList.getHead() != null) {
+			Reverse(hitSnake);
+			Position hitSnakeHeadTail = (Position) hitSnake.positionLinkedList.getHead().getData();
+			for (int i = 0; i < 4; i++) {
+				if (board[hitSnakeHeadTail.y + dy[i]][hitSnakeHeadTail.x + dx[i]] == ' ') {
+					board[hitSnake.getPos().y][hitSnake.getPos().x] = ' ';
+					hitSnake.setPos(new Position(hitSnakeHeadTail.x + dx[i], hitSnakeHeadTail.y + dy[i]));
+					board[hitSnakeHeadTail.y + dy[i]][hitSnakeHeadTail.x + dx[i]] = 'S';
+					break;
+				}
+			}
+		}
+		hitSnake.randomMode=true;
+		showSnakeTail(hitSnake.collactibleLinkedList, hitSnake.positionLinkedList);
+	}
+
+	public void Reverse(Snake snake) {
+
+		if (snake.collactibleLinkedList != null) {
+			Node prev = null;
+			Node current = snake.collactibleLinkedList.getHead();
+			Node next = null;
+
+			while (current != null) {
+				next = current.getLink();
+				current.setLink(prev);
+				prev = current;
+				current = next;
+			}
+
+			snake.collactibleLinkedList.setHead(prev);
+
+		}
+		if (snake.positionLinkedList != null) {
+			Node prev = null;
+			Node current = snake.positionLinkedList.getHead();
+			Node next = null;
+
+			while (current != null) {
+				next = current.getLink();
+				current.setLink(prev);
+				prev = current;
+				current = next;
+			}
+
+			snake.positionLinkedList.setHead(prev);
+
+		}
+		showSnakeTail(snake.collactibleLinkedList, snake.positionLinkedList);
+
+	}
+
+	public void removeSnake(Snake snake) {
+
+		if (snake == null)
+			return;
+
+		Node pos = snake.positionLinkedList != null ? snake.positionLinkedList.getHead() : null;
+
+		while (pos != null) {
+			Position p = (Position) pos.getData();
+			board[p.y][p.x] = ' ';
+			pos = pos.getLink();
+		}
+		Position head = snake.getPos();
+
+		if (head != null) {
+			board[head.y][head.x] = ' ';
+		}
+		if (snake.positionLinkedList != null)
+			snake.positionLinkedList.setHead(null);
+		if (snake.collactibleLinkedList != null)
+			snake.collactibleLinkedList.setHead(null);
+		for (int i = 0; i < snakes.length; i++) {
+			if (snakes[i] == snake) {
+				snakes[i] = null;
+				break;
+			}
 		}
 	}
 
