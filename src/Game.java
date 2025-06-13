@@ -11,6 +11,14 @@ import java.util.Scanner;
 import enigma.console.TextAttributes;
 import java.awt.Color;
 
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+
 public class Game {
 	enigma.console.Console cn = Enigma.getConsole("Mouse and Keyboard", 75, 25, 16);
 	TextMouseListener tmlis;
@@ -29,8 +37,13 @@ public class Game {
 	private Position[] traps = new Position[100];
 	private int trapsMaxCount = 0;
 	private int[] trapsTimes = new int[100];
-	int[] oppositeDirection = {1, 0, 3, 2};
-
+	int[] oppositeDirection = { 1, 0, 3, 2 };
+	//
+	public SingleLinkedList rememberedHitSnakeTailElements = new SingleLinkedList();
+	public boolean continueAddingHitelements = false;
+	public int counterForHit = 0;
+	public int counterForHowManyTimesCont = 0;
+	//
 	private int count;// haci neyin count u
 
 	Stack stack;// neyin stack ı
@@ -101,15 +114,16 @@ public class Game {
 		}
 
 		// main game loop
-		// pathLine();
+		pathLine();
 		while (true) {
-			checkSnakeCollision();
+			
 			printMap();
+			checkSnakeCollision();
 			addTrapsToBoard();
 
-			// if ((stack2.isEmpty()))
-			// pathLine();
-			if (totalTime % (8 * timeUnit) == 0) {
+			if ((stack2.isEmpty()))
+				pathLine();
+			if (totalTime % (4 * timeUnit) == 0) {
 				// check snake pos for trap
 				boolean hardBreak = false;
 				for (int i = 0; i < this.trapsMaxCount; i++) {
@@ -132,7 +146,9 @@ public class Game {
 						}
 					}
 				}
-
+				
+				updateSposition();
+				printMap();
 			}
 
 			if (mousepr == 1) {
@@ -143,27 +159,23 @@ public class Game {
 			if (keypr == 1) {
 				if (rkey == KeyEvent.VK_SPACE) {
 					putTrap();
-				} else {
-					if (player.getEnergy() > 0) {
-						if (totalTime % timeUnit == 0) {
-							updatePlayerPos();
-						}
-					} else {
-						if (totalTime % (2 * timeUnit) == 0) {
-							updatePlayerPos();
-						}
-					}
 				}
-				if (rkey == KeyEvent.VK_ENTER) {
-					updateSposition();
-					printMap();
+				if (player.getEnergy() > 0) {
+					if (totalTime % timeUnit == 0) {
+						updatePlayerPos();
+					}
+				} else {
+					if (totalTime % (2 * timeUnit) == 0) {
+						updatePlayerPos();
+					}
 				}
 
 				keypr = 0;
 			}
 
+
 			if (totalTime % (4 * timeUnit) == 0) {
-				// movementCrobot();
+				movementCrobot();
 				checkNeighborHarming();
 			}
 
@@ -177,7 +189,7 @@ public class Game {
 				enqueueInput();
 			}
 
-			if (totalTime % (1 * timeUnit) == 0) {
+			if (totalTime % (8 * timeUnit) == 0) {
 				for (int i = 0; i < this.trapsMaxCount; i++) {
 					if (this.traps[i] != null) {
 						if (this.trapsTimes[i]-- == 0) {
@@ -192,6 +204,74 @@ public class Game {
 				player.setEnergy(player.getEnergy() - 1);
 			}
 
+			if (player.getLifePoint() <= 0) {
+				cn.getTextWindow().setCursorPosition(0, 500);
+				System.out.println("You died. if you want add score to highscore table give me nickname otherwise just enter 'E'.");
+				Scanner s = new Scanner(System.in);
+				String input = s.next();
+				if (input == "E") {
+					System.exit(31);
+				}
+				
+				try (BufferedWriter writer = new BufferedWriter(new FileWriter("highscore.txt", true))) {
+		            writer.write(input+" "+player.getScore()+"\n");
+		        } catch (IOException e) {
+		            System.err.println("Error write file: " + e.getMessage());
+		        }
+				
+				DoubleLinkedList dll = new DoubleLinkedList();
+				
+				int count = 0;
+		        try (BufferedReader reader = new BufferedReader(new FileReader("highscore.txt"))) {
+		            String line;
+		            while ((line = reader.readLine()) != null) {
+		                dll.add(line);
+		                count++;
+		            }
+		        } catch (IOException e) {
+		            System.err.println("Error read file: " + e.getMessage());
+		        }
+		        
+		        DoubleLinkedList dll2 = new DoubleLinkedList();
+		        Node2 head = dll.head;
+		        Node2 temp = head;
+		        Node2 maxNode = null;
+		        int max = -1;
+		        for (int i = 0; i < count; i++) {
+		        	temp = head;
+		        	max = -1;
+		        	maxNode = null;
+			        while(temp != null) {
+			        	int score = Integer.parseInt(((String)temp.data).split(" ")[1]);
+			        	if (score >= max) {
+			        		maxNode = temp;
+			        		max = score;
+			        	}
+			        	temp = temp.next;
+			        }
+			        
+			        
+			        dll2.add(maxNode.data);
+			        if (maxNode.prev == null) {
+			        	head = head.next;
+			        }else if (maxNode.next == null) {
+			        	maxNode.prev.next = null;
+			        }else {
+			        	maxNode.prev.next = maxNode.next;
+			        	maxNode.next.prev = maxNode.prev;
+			        }
+			        
+		        }
+		        temp = dll2.head;
+		        System.out.println();
+		        while (temp != null) {
+		        	System.out.println(temp.data);
+		        	temp = temp.next;
+		        }
+		        s.next();
+		        System.exit(0);
+			}
+			
 			Thread.sleep(timeUnit);
 			totalTime += timeUnit;
 
@@ -275,21 +355,21 @@ public class Game {
 		int count = 0;
 		int y = snake.getPos().y;
 		int x = snake.getPos().x;
-		if (checkWall(new Position(x, y + 1)) || checkWalkers3(new Position(x, y + 1))||checkSnake(snake,2))
+		if (checkWall(new Position(x, y + 1)) || checkWalkers(new Position(x, y + 1)) || checkSnake(snake, 2))
 			count++;
-		if (checkWall(new Position(x, y - 1)) || checkWalkers3(new Position(x, y - 1))||checkSnake(snake,3))
+		if (checkWall(new Position(x, y - 1))|| checkWalkers(new Position(x, y - 1))  || checkSnake(snake, 3))
 			count++;
-		if (checkWall(new Position(x + 1, y)) || checkWalkers3(new Position(x + 1, y))||checkSnake(snake,0))
+		if (checkWall(new Position(x + 1, y)) || checkWalkers(new Position(x+1, y)) || checkSnake(snake, 0))
 			count++;
-		if (checkWall(new Position(x - 1, y)) || checkWalkers3(new Position(x - 1, y))||checkSnake(snake,1))
+		if (checkWall(new Position(x - 1, y)) || checkWalkers(new Position(x-1, y)) || checkSnake(snake, 1))
 			count++;
 
-		if (count == 4 && snake.positionLinkedList.getHead()!=null) 
-			return true;
-		
-		if(count==3&&snake.positionLinkedList.getHead()==null)
-			return true;
-		
+		if (count == 4 && snake.positionLinkedList.getHead() != null) {
+			return true;}
+
+		if (count == 3 && snake.positionLinkedList.getHead() == null) {
+			return true;}
+
 		return false;
 	}
 
@@ -303,6 +383,14 @@ public class Game {
 
 	public boolean checkWalkers(Position pos) {
 		if (this.board[pos.y][pos.x] == 'P' || this.board[pos.y][pos.x] == 'C' || this.board[pos.y][pos.x] == 'S') {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public boolean checkWalkers10(Position pos) {
+		if (this.board[pos.y][pos.x] == 'P' || this.board[pos.y][pos.x] == 'C' || this.board[pos.y][pos.x] == 'S'|| this.board[pos.y][pos.x] == '#') {
 			return true;
 		} else {
 			return false;
@@ -429,16 +517,16 @@ public class Game {
 
 	public void enqueueInput() {
 		int a = (int) (Math.random() * 100);
-		if (a <= 20) {
-			inputQueue.enqueue('S');
-		} else if (20 < a && a <= 75) {
+		if (a <= 55) {
+			inputQueue.enqueue('1');
+		} else if (55 < a && a <= 75) {
 			inputQueue.enqueue('2');
 		} else if (75 < a && a <= 88) {
 			inputQueue.enqueue('3');
 		} else if (88 < a && a <= 97) {
 			inputQueue.enqueue('@');
 		} else if (97 < a && a <= 100) {
-			inputQueue.enqueue('1');
+			inputQueue.enqueue('S');
 		}
 	}
 
@@ -615,12 +703,24 @@ public class Game {
 					if (snakes[i].getPos().x < snakes[i].getTargetPos().x
 							&& !(board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == '#'
 									|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'P'
-									|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'C'||checkSnake(snakes[i],0))) {
+									|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'C'
+									|| checkSnake(snakes[i], 0))) {
 						Position newSnakePos = new Position(snakes[i].getPos().x + 1, snakes[i].getPos().y);
 						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
 								snakes[i].positionLinkedList);
 						if (!controlEating) {
-							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							if (continueAddingHitelements && counterForHowManyTimesCont != 0) {
+								updateTailPositionsAndTailForCollision1(snakes[i].getPos(),
+										snakes[i].positionLinkedList,
+										snakes[i].collactibleLinkedList/* ,rememberedHitSnakeTailElements */);
+								counterForHowManyTimesCont--;
+							} else {
+								updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+
+							}
+							if (counterForHowManyTimesCont == 0) {
+								continueAddingHitelements = false;
+							}
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
@@ -629,12 +729,24 @@ public class Game {
 					} else if (snakes[i].getPos().x > snakes[i].getTargetPos().x
 							&& !(board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == '#'
 									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'P'
-									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'C'||checkSnake(snakes[i],1))) {
+									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'C'
+									|| checkSnake(snakes[i], 1))) {
 						Position newSnakePos = new Position(snakes[i].getPos().x - 1, snakes[i].getPos().y);
 						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
 								snakes[i].positionLinkedList);
 						if (!controlEating) {
-							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							if (continueAddingHitelements && counterForHowManyTimesCont != 0) {
+								updateTailPositionsAndTailForCollision1(snakes[i].getPos(),
+										snakes[i].positionLinkedList,
+										snakes[i].collactibleLinkedList/* ,rememberedHitSnakeTailElements */);
+								counterForHowManyTimesCont--;
+							} else {
+								updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+
+							}
+							if (counterForHowManyTimesCont == 0) {
+								continueAddingHitelements = false;
+							}
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
@@ -643,12 +755,24 @@ public class Game {
 					} else if (snakes[i].getPos().y < snakes[i].getTargetPos().y
 							&& !(board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == '#'
 									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'P'
-									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'C'||checkSnake(snakes[i],2))) {
+									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'C'
+									|| checkSnake(snakes[i], 2))) {
 						Position newSnakePos = new Position(snakes[i].getPos().x, snakes[i].getPos().y + 1);
 						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
 								snakes[i].positionLinkedList);
 						if (!controlEating) {
-							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							if (continueAddingHitelements && counterForHowManyTimesCont != 0) {
+								updateTailPositionsAndTailForCollision1(snakes[i].getPos(),
+										snakes[i].positionLinkedList,
+										snakes[i].collactibleLinkedList/* ,rememberedHitSnakeTailElements */);
+								counterForHowManyTimesCont--;
+							} else {
+								updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+
+							}
+							if (counterForHowManyTimesCont == 0) {
+								continueAddingHitelements = false;
+							}
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
@@ -657,12 +781,24 @@ public class Game {
 					} else if (snakes[i].getPos().y > snakes[i].getTargetPos().y
 							&& !(board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == '#'
 									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'P'
-									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'C'||checkSnake(snakes[i],3))) {
+									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'C'
+									|| checkSnake(snakes[i], 3))) {
 						Position newSnakePos = new Position(snakes[i].getPos().x, snakes[i].getPos().y - 1);
 						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
 								snakes[i].positionLinkedList);
 						if (!controlEating) {
-							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							if (continueAddingHitelements && counterForHowManyTimesCont != 0) {
+								updateTailPositionsAndTailForCollision1(snakes[i].getPos(),
+										snakes[i].positionLinkedList,
+										snakes[i].collactibleLinkedList/* ,rememberedHitSnakeTailElements */);
+								counterForHowManyTimesCont--;
+							} else {
+								updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+
+							}
+							if (counterForHowManyTimesCont == 0) {
+								continueAddingHitelements = false;
+							}
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
@@ -710,27 +846,43 @@ public class Game {
 								|| (newDirection == 3 && snakes[i].randomDirection == 2)
 								|| (newDirection == 0 && (board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == '#'
 										|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'P'
-										|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'C'||checkSnake(snakes[i],0)))
+										|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'C'
+										|| checkSnake(snakes[i], 0)))
 								|| newDirection == 1 && (board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == '#'
 										|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'P'
-										|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'C'||checkSnake(snakes[i],1))
+										|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'C'
+										|| checkSnake(snakes[i], 1))
 								|| (newDirection == 2 && (board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == '#'
 										|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'P'
-										|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'C'||checkSnake(snakes[i],2)))
+										|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'C'
+										|| checkSnake(snakes[i], 2)))
 								|| (newDirection == 3 && (board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == '#'
 										|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'P'
-										|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'C'||checkSnake(snakes[i],3))));
+										|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'C'
+										|| checkSnake(snakes[i], 3))));
 						snakes[i].randomDirection = newDirection;
 					}
 
 					if (snakes[i].randomDirection == 0 && !(board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == '#'
 							|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'P'
-							|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'C'||checkSnake(snakes[i],0))) {
+							|| board[snakes[i].getPos().y][snakes[i].getPos().x + 1] == 'C'
+							|| checkSnake(snakes[i], 0))) {
 						Position newSnakePos = new Position(snakes[i].getPos().x + 1, snakes[i].getPos().y);
 						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
 								snakes[i].positionLinkedList);
 						if (!controlEating) {
-							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							if (continueAddingHitelements && counterForHowManyTimesCont != 0) {
+								updateTailPositionsAndTailForCollision1(snakes[i].getPos(),
+										snakes[i].positionLinkedList,
+										snakes[i].collactibleLinkedList/* ,rememberedHitSnakeTailElements */);
+								counterForHowManyTimesCont--;
+							} else {
+								updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+
+							}
+							if (counterForHowManyTimesCont == 0) {
+								continueAddingHitelements = false;
+							}
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
@@ -739,12 +891,24 @@ public class Game {
 					} else if (snakes[i].randomDirection == 1
 							&& !(board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == '#'
 									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'P'
-									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'C'||checkSnake(snakes[i],1))) {
+									|| board[snakes[i].getPos().y][snakes[i].getPos().x - 1] == 'C'
+									|| checkSnake(snakes[i], 1))) {
 						Position newSnakePos = new Position(snakes[i].getPos().x - 1, snakes[i].getPos().y);
 						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
 								snakes[i].positionLinkedList);
 						if (!controlEating) {
-							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							if (continueAddingHitelements && counterForHowManyTimesCont != 0) {
+								updateTailPositionsAndTailForCollision1(snakes[i].getPos(),
+										snakes[i].positionLinkedList,
+										snakes[i].collactibleLinkedList/* ,rememberedHitSnakeTailElements */);
+								counterForHowManyTimesCont--;
+							} else {
+								updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+
+							}
+							if (counterForHowManyTimesCont == 0) {
+								continueAddingHitelements = false;
+							}
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
@@ -753,12 +917,24 @@ public class Game {
 					} else if (snakes[i].randomDirection == 2
 							&& !(board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == '#'
 									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'P'
-									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'C'||checkSnake(snakes[i],2))) {
+									|| board[snakes[i].getPos().y + 1][snakes[i].getPos().x] == 'C'
+									|| checkSnake(snakes[i], 2))) {
 						Position newSnakePos = new Position(snakes[i].getPos().x, snakes[i].getPos().y + 1);
 						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
 								snakes[i].positionLinkedList);
 						if (!controlEating) {
-							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							if (continueAddingHitelements && counterForHowManyTimesCont != 0) {
+								updateTailPositionsAndTailForCollision1(snakes[i].getPos(),
+										snakes[i].positionLinkedList,
+										snakes[i].collactibleLinkedList/* ,rememberedHitSnakeTailElements */);
+								counterForHowManyTimesCont--;
+							} else {
+								updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+
+							}
+							if (counterForHowManyTimesCont == 0) {
+								continueAddingHitelements = false;
+							}
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
@@ -767,12 +943,24 @@ public class Game {
 					} else if (snakes[i].randomDirection == 3
 							&& !(board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == '#'
 									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'P'
-									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'C'||checkSnake(snakes[i],3))) {
+									|| board[snakes[i].getPos().y - 1][snakes[i].getPos().x] == 'C'
+									|| checkSnake(snakes[i], 3))) {
 						Position newSnakePos = new Position(snakes[i].getPos().x, snakes[i].getPos().y - 1);
 						boolean controlEating = eating(newSnakePos.y, newSnakePos.x, snakes[i].collactibleLinkedList,
 								snakes[i].positionLinkedList);
 						if (!controlEating) {
-							updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+							if (continueAddingHitelements && counterForHowManyTimesCont != 0) {
+								updateTailPositionsAndTailForCollision1(snakes[i].getPos(),
+										snakes[i].positionLinkedList,
+										snakes[i].collactibleLinkedList/* ,rememberedHitSnakeTailElements */);
+								counterForHowManyTimesCont--;
+							} else {
+								updateTailPositions(snakes[i].getPos(), snakes[i].positionLinkedList);
+
+							}
+							if (counterForHowManyTimesCont == 0) {
+								continueAddingHitelements = false;
+							}
 						} else {
 							updateTailPositionsEating(snakes[i].getPos(), snakes[i].positionLinkedList);
 						}
@@ -788,13 +976,13 @@ public class Game {
 				}
 				board[snakes[i].getPos().y][snakes[i].getPos().x] = 'S';
 
-				if (check3Wall(snakes[i]) ==true) {
+				showSnakeTail(snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
+
+				if (check3Wall(snakes[i]) == true) {
 					snakeReserving(snakes[i]);
 					snakes[i].currentDirection = (snakes[i].currentDirection + 2) % 4;
 					snakes[i].randomMode = true;
 				}
-
-				showSnakeTail(snakes[i].collactibleLinkedList, snakes[i].positionLinkedList);
 
 			}
 
@@ -805,7 +993,7 @@ public class Game {
 	public boolean eating(int y, int x, SingleLinkedList list, SingleLinkedList list2) {
 		char point = this.board[y][x];
 
-		if (point == '2' || point == '3') {
+		if (point == '1'  || point == '2' || point == '3') {
 			if (list2 != null) {
 				Node current = list2.getHead();
 				while (current != null) {
@@ -970,7 +1158,7 @@ public class Game {
 		}
 	}
 
-	public Position position1(Snake snake ,int direction) {
+	public Position position1(Snake snake, int direction) {
 		Position Position = null;
 		Position snakesHead = snake.getPos();
 		if (direction == 0)
@@ -985,27 +1173,42 @@ public class Game {
 		return Position;
 	}
 
-	public void checkSnakeCollision() {
+	//
+	public SingleLinkedList deepCopyList(SingleLinkedList original) {
+		SingleLinkedList copy = new SingleLinkedList();
+		Node current = original.getHead();
+		while (current != null) {
+			copy.add(current.getData());
+			current = current.getLink();
+		}
+		return copy;
+	}
+
+	//
+	public void checkSnakeCollision() {//
 		boolean[] processed = new boolean[snakes.length];
 
 		for (int i = 0; i < snakes.length; i++) {
 			if (snakes[i] == null || processed[i])
 				continue;
 
-			Position collisionPosition = position1(snakes[i],snakes[i].currentDirection);
+			Position collisionPosition = position1(snakes[i], snakes[i].currentDirection);
 
 			for (int j = 0; j < snakes.length; j++) {
-				if (snakes[j] == null || i == j || processed[j])
+				if (snakes[j] == null ||snakes[i]==null|| i == j || processed[j])
 					continue;
 				Snake hitSnake = snakes[i];
 				Position otherHead = snakes[j].getPos();
 				if (otherHead.x == collisionPosition.x && otherHead.y == collisionPosition.y) {
 					removeSnake(i);
 					removeSnake(j);
+					
 					processed[i] = true;
 					processed[j] = true;
 					break;
 				}
+				if (snakes[j] == null ||snakes[i]==null|| i == j || processed[j])
+					continue;
 				if (snakes[i].getPos().x == otherHead.x && snakes[i].getPos().y == otherHead.y) {
 					removeSnake(i);
 					removeSnake(j);
@@ -1013,6 +1216,8 @@ public class Game {
 					processed[j] = true;
 					break;
 				}
+				if (snakes[j] == null ||snakes[i]==null|| i == j || processed[j])
+					continue;
 
 				Node tailNode = snakes[j].positionLinkedList.getHead();
 				Node collactibleNode = snakes[j].collactibleLinkedList.getHead();
@@ -1023,17 +1228,21 @@ public class Game {
 
 					if (tailPos.x == collisionPosition.x && tailPos.y == collisionPosition.y) {
 						if (value == '1') {
-							collision1(snakes[j], snakes[i], collisionPosition);
+							collision1(snakes[j], snakes[i], collisionPosition, tailPos.x, tailPos.y);
+							//
+							rememberedHitSnakeTailElements = deepCopyList(snakes[i].collactibleLinkedList);
+							processed[i] = true;
+							processed[j] = true;
+							continueAddingHitelements = true;
+							removeSnake(snakes[i]);
+							i++;
+							break;
 						}
 						if (value == '2' || value == '3') {
-							cn.getTextWindow().setCursorPosition(60, 19);
-							cn.getTextWindow().output(String.format("%d,%d", collisionPosition.x, collisionPosition.y));
-							cn.getTextWindow().setCursorPosition(60, 20);
-							cn.getTextWindow().output(String.format("%d,%d", tailPos.x, tailPos.y));
 							int newSnakeInt = collision2or3(snakes[j], hitSnake, collisionPosition);
 							processed[i] = true;
 							processed[j] = true;
-							processed[newSnakeInt]=true;
+							processed[newSnakeInt] = true;
 							break;
 						}
 					}
@@ -1042,18 +1251,119 @@ public class Game {
 					collactibleNode = collactibleNode.getLink();
 				}
 			}
+			
 		}
-	}
-
-	public void collision1(Snake crashedSnake, Snake hitSnake, Position collisionPosition) {
 
 	}
-	
+
+
+	public void collision1(Snake crashedSnake, Snake hitSnake, Position collisionPosition, int coordX, int coordY) {
+		SingleLinkedList crashedSnakeTailPosition = crashedSnake.positionLinkedList;
+		SingleLinkedList hitSnakeTailElements = hitSnake.collactibleLinkedList;
+		// bu kısmı kaçıncı eleman olduğunu bulmak için yaptım
+		int counter = 0;
+		Node crashedSnakePositionNode = crashedSnakeTailPosition.getHead();
+		while (true) {
+			Position pos = (Position) crashedSnakePositionNode.getData();
+			if (pos.x == coordX && pos.y == coordY) {
+				break;
+			}
+			counter++;
+			crashedSnakePositionNode = crashedSnakePositionNode.getLink();
+		}
+		// global değişkenle çartığı noktanın bir yanını tuttum
+		counterForHit = counter + 1;
+		// global değişkenle yılanın kaç hareket yapması gerektiğini tuttum tuttum.
+		counterForHowManyTimesCont = hitSnakeTailElements.size();
+		
+	}
+
+	public void updateTailPositionsAndTailForCollision1(Position newTailPos, SingleLinkedList coordinates,
+			SingleLinkedList snakeTail) {
+		  Node willBeAdded = rememberedHitSnakeTailElements.getHead();
+		    
+		    if (willBeAdded == null) {
+		        return;
+		    }
+
+		    Object dataToAddTail = willBeAdded.getData();
+		    int size = snakeTail.size();
+		    Node newNode = new Node(dataToAddTail);
+		    if (counterForHit >= size) {
+		        Node temp = snakeTail.getHead();
+		        if(temp!=null) {
+		        while (temp.getLink() != null) {
+		            temp = temp.getLink();
+		        }
+		        temp.setLink(newNode);
+		        }
+		    } else {
+		        Node temp = snakeTail.getHead();
+		        int count = 0;
+		        while (temp != null) {
+		            if (count == counterForHit - 1) {
+		                newNode.setLink(temp.getLink());
+		                temp.setLink(newNode);
+		                break;
+		            }
+		            temp = temp.getLink();
+		            count++;
+		        }
+		    }
+		    int controlSize=snakeTail.size();
+			rememberedHitSnakeTailElements.setHead(willBeAdded.getLink());
+			//
+			// kordinat kısmı burda düzgün bir şekilde eklemiyor olasılık
+			if (coordinates != null) {
+				int size2 = coordinates.size();
+				if (counterForHit > size2) {
+					Node current = coordinates.getHead();
+					if (current == null) {
+						coordinates.setHead(new Node(new Position(newTailPos.x, newTailPos.y)));
+					} else {
+						while (current.getLink() != null) {
+							current = current.getLink();
+						}
+						current.setLink(new Node(new Position(newTailPos.x, newTailPos.y)));
+					}
+				} else {
+					if (coordinates.getHead() == null)
+						return;
+					Node current = coordinates.getHead();
+					Position temp = new Position(newTailPos.x, newTailPos.y); // ilk pozisyon
+					Position prevTemp;
+
+					int i = 0;
+					while (i < counterForHit && current != null) {
+						prevTemp = (Position) current.getData();
+						current.setData(temp);
+						temp = prevTemp;
+
+						current = current.getLink();
+						i++;
+					}
+					Node insertAt = coordinates.getHead();
+					int j = 0;
+					while (j < counterForHit - 1 && insertAt != null) {
+						insertAt = insertAt.getLink();
+						j++;
+					}
+
+					if (insertAt != null) {
+						Node newNode2 = new Node(temp);
+						newNode2.setLink(insertAt.getLink());
+						insertAt.setLink(newNode2);
+					}
+				}
+			}	
+			int controlSize2=coordinates.size();
+			//
+		}	
 
 	public int collision2or3(Snake crashedSnake, Snake hitSnake, Position collisionPosition) {
 		Snake newSnake = new Snake(collisionPosition);
 
-		int newSnakeInt=0;
+		int newSnakeInt = 0;
 		SingleLinkedList crashedSnakeTailPosition = crashedSnake.positionLinkedList;
 		SingleLinkedList crashedSnakeTailCollactible = crashedSnake.collactibleLinkedList;
 
@@ -1134,21 +1444,21 @@ public class Game {
 		for (int i = 0; i < snakes.length; i++) {
 			if (snakes[i] == null) {
 				snakes[i] = newSnake;
-				newSnakeInt=i;
+				newSnakeInt = i;
 				break;
 			}
 		}
-		
-	//newSnakereverse yapmadin onu yap
+
+		// newSnakereverse yapmadin onu yap
 //bazen hitsnake reverse olduktan sonra s kismi silinmiyor sebepsiz
-		//newsnake  nasil eklendigibelli degil
-		newSnake.currentDirection=oppositeDirection[crashedSnake.currentDirection];
+		// newsnake nasil eklendigibelli degil
+		newSnake.currentDirection = oppositeDirection[crashedSnake.currentDirection];
 		Reverse(snakes[newSnakeInt]);
 		snakeReserving(snakes[newSnakeInt]);
 
 		showSnakeTail(newSnake.collactibleLinkedList, newSnake.positionLinkedList);
 		if (hitSnake.positionLinkedList.getHead() != null) {
-		
+
 			Reverse(hitSnake);
 			Position hitSnakeHeadTail = (Position) hitSnake.positionLinkedList.getHead().getData();
 			int direction2 = oppositeDirection[hitSnake.currentDirection];
@@ -1238,36 +1548,47 @@ public class Game {
 			}
 		}
 	}
-	public boolean checkSnake(Snake snake,int direction){
-		
-		Position position = position1(snake,direction);
-		
-		for(int i=0;i<snakes.length;i++) {
-			if(snakes[i]==null)
+
+	public boolean checkSnake(Snake snake, int direction) {
+
+		Position position = position1(snake, direction);
+
+		for (int i = 0; i < snakes.length; i++) {
+			if (snakes[i] == null)
 				continue;
-			
+
 			SingleLinkedList positionLinkedList = snakes[i].positionLinkedList;
 			Node positionNode = positionLinkedList.getHead();
-			
-			while(positionNode!=null) {
+
+			while (positionNode != null) {
 				Position position2 = (Position) positionNode.getData();
-				if(position.x==position2.x&&position.y==position2.y) {
+				if (position.x == position2.x && position.y == position2.y) {
 					return true;
 				}
 				positionNode = positionNode.getLink();
 			}
-			
+
 		}
-			return false;
+		return false;
 	}
-	
+
 	public void printMap() {
 		cn.getTextWindow().setCursorPosition(0, 0);
 		for (int y = 0; y < 23; y++) {
 			for (int x = 0; x < 55; x++) {
 				if (board[y][x] == 'S') {
 					cn.getTextWindow().output(x, y, 'S', new TextAttributes(Color.GREEN));
-				} else {
+				}
+				else if (board[y][x] == 'P') {
+					cn.getTextWindow().output(x, y, 'P', new TextAttributes(Color.CYAN));
+				} else if (board[y][x] == '#') {
+					cn.getTextWindow().output(x, y, '#', new TextAttributes(Color.GRAY));
+				} else if (board[y][x] == 'C') {
+					cn.getTextWindow().output(x, y, 'C', new TextAttributes(Color.YELLOW));
+				}else if(board[y][x] == '.') {
+					cn.getTextWindow().output(x, y, '.', new TextAttributes(Color.RED));
+				}
+				else {
 					cn.getTextWindow().output(x, y, board[y][x]);
 				}
 			}

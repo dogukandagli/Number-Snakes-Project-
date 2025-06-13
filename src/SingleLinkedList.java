@@ -41,7 +41,7 @@ public class SingleLinkedList {
 		boolean flag = false;
 
 		if (head == null) {
-			System.out.println("linked list is empty");
+			
 		} else {
 			Node temp = head;
 			while (temp != null) {
@@ -58,7 +58,7 @@ public class SingleLinkedList {
 
 	public void print() {
 		if (head == null) {
-			System.out.println("linked list is empty");
+			
 		} else {
 			Node temp = head;
 			while (temp != null) {
@@ -73,7 +73,7 @@ public class SingleLinkedList {
 		int count = 0;
 
 		if (head == null) {
-			System.out.println("linked list is empty");
+			
 		} else {
 			Node temp = head;
 			while (temp != null) {
